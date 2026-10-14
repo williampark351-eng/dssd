@@ -1,0 +1,23 @@
+[functions.job-sync]
+verify_jwt = true
+
+[functions.match-jobs]
+verify_jwt = true
+
+[functions.resume-parse]
+verify_jwt = true
+
+[functions.application-worker]
+verify_jwt = true
+
+[functions.test-ats]
+verify_jwt = true
+
+[functions.account-delete]
+verify_jwt = true
+
+[functions.ai-assist]
+verify_jwt = true
+
+[functions.live-transcribe]
+verify_jwt = false
