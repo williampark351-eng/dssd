@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildAnswers, chooseResume, coverLetter, isSensitive, tailorResume, type Profile, type Question, type ResumeRow } from '../supabase/functions/application-worker/packet';
+import { buildAnswers, chooseResume, coverLetter, formGaps, isSensitive, tailorResume, type PacketAnswer, type Profile, type Question, type ResumeRow } from '../supabase/functions/application-worker/packet';
 
 const profile: Profile = { full_name: 'Jordan Rivera', email: 'j@example.com', phone: '555-123-4567', location: 'Brooklyn, NY', linkedin_url: 'https://linkedin.com/in/jr', portfolio_url: '' };
 const q = (label: string, field: string, required = true, extra: Partial<Question> = {}): Question => ({ label, field, required, type: 'input_text', ...extra });
@@ -82,5 +82,37 @@ describe('resume selection and tailoring', () => {
     expect(letter).toContain('Acme');
     expect(letter).toContain('SQL');
     expect(letter).not.toMatch(/kubernetes|phd/i);
+  });
+});
+
+describe('formGaps', () => {
+  const ans = (field: string, answer: string, extra: Partial<PacketAnswer> = {}): PacketAnswer =>
+    ({ question: field, field, answer, source: 'user', required: true, sensitive: false, type: 'input_text', ...extra });
+  const have = { phone: true, coverLetter: true };
+
+  it('passes when every required employer question has an answer', () => {
+    expect(formGaps([q('First', 'first_name'), q('Why us', 'q1')], [ans('q1', 'Because')], have)).toEqual([]);
+  });
+
+  it('flags required questions missing from the packet', () => {
+    expect(formGaps([q('Portfolio', 'q2')], [], have)).toEqual(['Portfolio']);
+  });
+
+  it('flags choices that are not one of the employer options', () => {
+    const opts = [{ label: 'Yes', value: '1' }, { label: 'No', value: '0' }];
+    expect(formGaps([q('Relocate?', 'q3', true, { type: 'multi_value_single_select', options: opts })], [ans('q3', 'Maybe')], have)).toEqual(['Relocate?']);
+  });
+
+  it('flags required field types we cannot send', () => {
+    expect(formGaps([q('Writing sample', 'q4', true, { type: 'input_file' })], [ans('q4', 'x')], have)).toEqual(['Writing sample']);
+    expect(formGaps([q('Skills', 'q5', true, { type: 'multi_value_multi_select' })], [ans('q5', 'x')], have)).toEqual(['Skills']);
+  });
+
+  it('flags a required phone or cover letter we do not have', () => {
+    expect(formGaps([q('Phone', 'phone'), q('Cover letter', 'cover_letter')], [], { phone: false, coverLetter: false })).toEqual(['Phone', 'Cover letter']);
+  });
+
+  it('ignores optional questions', () => {
+    expect(formGaps([q('Extra', 'q6', false)], [], have)).toEqual([]);
   });
 });

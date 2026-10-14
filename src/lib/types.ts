@@ -62,11 +62,13 @@ export type PacketAnswer = {
   options?: { label: string; value: string }[];
 };
 
+export type EvidenceLevel = 'none' | 'user_reported' | 'provider_accepted' | 'receipt_verified' | 'employer_response_verified';
+
 export type Application = {
   id: string; job_id: string; match_score: number; state: ApplicationState; mode: ApplyMode; resume_id: string | null;
   resume_snapshot: { id: string; name: string; file_name: string | null; parsed: Partial<ParsedResume>; reviewed?: boolean } | null;
   tailoring_notes: string[]; cover_letter: string; answers: PacketAnswer[]; prepared_at: string | null; user_approved_at: string | null;
-  submission_method: 'provider_api' | 'manual_user_reported' | null; submitted_at: string | null; confirmed_at: string | null;
+  submission_method: 'provider_api' | 'manual_user_reported' | null; evidence_level: EvidenceLevel; submitted_at: string | null; confirmed_at: string | null;
   receipt_id: string | null; confirmation_evidence: Record<string, unknown>; employer_response: string; employer_response_at: string | null;
   employer_response_note: string; required_action: string | null; required_action_kind: string | null; last_error: string | null;
   attempts: number; next_attempt_at: string | null; created_at: string; updated_at: string; job?: Job;

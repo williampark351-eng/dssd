@@ -3,14 +3,15 @@ import { Briefcase, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAsync, must } from '@/lib/useAsync';
 import { useNav } from '@/context/NavContext';
-import { METHOD_LABEL, RESPONSE_LABEL, STATE_META, formatDate } from '@/lib/format';
+import { EVIDENCE_META, METHOD_LABEL, RESPONSE_LABEL, STATE_META, formatDate } from '@/lib/format';
 import type { Application } from '@/lib/types';
 import { Badge, Button, Card, EmptyState, ErrorBanner, PageHeader, ScoreRing, Spinner } from '@/components/ui';
 import ApplicationDrawer from '@/components/ApplicationDrawer';
 
 const FILTERS = [
   { key: 'sent', label: 'Sent' },
-  { key: 'confirmed', label: 'Confirmed' },
+  { key: 'accepted', label: 'Accepted by employer' },
+  { key: 'self', label: 'Reported by you' },
   { key: 'responses', label: 'Has response' },
   { key: 'all', label: 'Everything' },
 ] as const;
@@ -26,7 +27,8 @@ export default function Applications() {
     const needle = q.trim().toLowerCase();
     return (data ?? []).filter((a) => {
       if (filter === 'sent' && !['SUBMITTED', 'CONFIRMED'].includes(a.state)) return false;
-      if (filter === 'confirmed' && a.state !== 'CONFIRMED') return false;
+      if (filter === 'accepted' && !['provider_accepted', 'receipt_verified', 'employer_response_verified'].includes(a.evidence_level)) return false;
+      if (filter === 'self' && a.evidence_level !== 'user_reported') return false;
       if (filter === 'responses' && a.employer_response === 'none') return false;
       return !needle || `${a.job?.title} ${a.job?.company} ${a.job?.location}`.toLowerCase().includes(needle);
     });
@@ -73,7 +75,10 @@ export default function Applications() {
                     </div>
                   </div>
                   <div><Badge tone={meta.tone}>{meta.label}</Badge></div>
-                  <div className="text-xs text-ink-600">{a.submission_method ? METHOD_LABEL[a.submission_method] : '—'}</div>
+                  <div className="text-xs text-ink-600">
+                    {a.submission_method ? METHOD_LABEL[a.submission_method] : '—'}
+                    {a.submitted_at && EVIDENCE_META[a.evidence_level] && <span className="block text-[11px] text-ink-400">{EVIDENCE_META[a.evidence_level].label}</span>}
+                  </div>
                   <div className="text-xs text-ink-600">{RESPONSE_LABEL[a.employer_response] ?? a.employer_response}</div>
                   <div className="text-xs text-ink-500">{formatDate(a.submitted_at)}</div>
                 </button>

@@ -1,4 +1,4 @@
-import type { ApplicationState } from './types';
+import type { ApplicationState, EvidenceLevel } from './types';
 
 export const STATE_META: Record<ApplicationState, { label: string; tone: Tone; description: string }> = {
   DISCOVERED: { label: 'Discovered', tone: 'neutral', description: 'Found in a job source' },
@@ -7,8 +7,8 @@ export const STATE_META: Record<ApplicationState, { label: string; tone: Tone; d
   PREPARING: { label: 'Preparing', tone: 'sky', description: 'Building your packet' },
   READY_FOR_REVIEW: { label: 'Ready for review', tone: 'amber', description: 'Packet ready; needs your decision' },
   SUBMITTING: { label: 'Submitting', tone: 'sky', description: 'Sending through an authorized integration' },
-  SUBMITTED: { label: 'Submitted', tone: 'brand', description: 'Accepted or recorded as submitted' },
-  CONFIRMED: { label: 'Confirmed', tone: 'success', description: 'Backed by a verified receipt' },
+  SUBMITTED: { label: 'Submitted', tone: 'brand', description: 'Sent by us or reported by you; see proof level' },
+  CONFIRMED: { label: 'Receipt verified', tone: 'success', description: 'Receipt checked directly with the employer system' },
   NEEDS_USER_ACTION: { label: 'Needs you', tone: 'amber', description: 'We paused for your input' },
   BLOCKED: { label: 'Blocked', tone: 'rose', description: 'Cannot proceed as-is' },
   FAILED: { label: 'Failed', tone: 'rose', description: 'Submission was rejected or errored' },
@@ -24,6 +24,14 @@ export const SUBMITTED_STATES: ApplicationState[] = ['SUBMITTED', 'CONFIRMED'];
 export const METHOD_LABEL: Record<string, string> = {
   provider_api: 'Employer integration',
   manual_user_reported: 'Submitted by you',
+};
+
+export const EVIDENCE_META: Record<EvidenceLevel, { label: string; tone: Tone; description: string }> = {
+  none: { label: 'No proof yet', tone: 'neutral', description: 'Nothing confirms this was sent.' },
+  user_reported: { label: 'Reported by you', tone: 'amber', description: 'You told us you submitted it. We have not seen proof from the employer.' },
+  provider_accepted: { label: 'Accepted by employer system', tone: 'brand', description: "The employer's application system accepted it when we sent it." },
+  receipt_verified: { label: 'Receipt verified', tone: 'success', description: 'A receipt was checked directly with the employer system.' },
+  employer_response_verified: { label: 'Employer replied', tone: 'success', description: 'The employer responded through a verified channel.' },
 };
 
 export const PROVIDER_LABEL: Record<string, string> = {

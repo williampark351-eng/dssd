@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { ArrowLeft, ArrowRight, Building2, Check, Route, UploadCloud } from 'lucide-react';
 import { supabase, friendlyError, audit, callFunction } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { useAsync } from '@/lib/useAsync';
 import { Button, Field, useToast } from '@/components/ui';
 import { ProfileForm, PreferencesForm, pickPreferences, pickProfile, type PreferencesDraft, type ProfileDraft } from '@/components/ProfileForms';
 import { createResumeFromText, resumeFileProblem, uploadResume } from '@/lib/resumes';
-import { PROVIDER_LABEL } from '@/lib/format';
+import { PROVIDER_LABEL, relativeTime } from '@/lib/format';
 
 const STEPS = ['About you', 'What you want', 'Your resume', 'Job sources'];
 
@@ -21,6 +22,14 @@ export default function Onboarding() {
   const [resumeDone, setResumeDone] = useState(false);
   const [provider, setProvider] = useState<'greenhouse' | 'lever' | 'ashby'>('greenhouse');
   const [token, setToken] = useState('');
+  const following = useAsync(async () => {
+    const { data, error } = await supabase.from('job_sources').select('company_name, board_token, last_synced_at').eq('active', true);
+    if (error) throw error;
+    return (data ?? []) as { company_name: string | null; board_token: string; last_synced_at: string | null }[];
+  });
+  const sources = following.data ?? [];
+  const lastSync = sources.map((s) => s.last_synced_at).filter(Boolean).sort().pop() ?? null;
+  const names = sources.map((s) => s.company_name || s.board_token).slice(0, 6);
 
   const saveProfile = async () => {
     if (!p.full_name.trim()) { toast('error', 'Add your name to continue.'); return false; }
@@ -143,14 +152,22 @@ export default function Onboarding() {
             <>
               <h1 className="font-display text-4xl">Where should we look?</h1>
               <p className="mb-6 mt-2 text-sm text-ink-500">Add employer job boards that publish public listings. You can add many more from Discover Jobs.</p>
-              <div className="flex w-full items-start gap-4 rounded-2xl border border-brand-500 bg-brand-50/60 p-4 ring-4 ring-brand-500/10">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-brand-700 ring-1 ring-brand-200"><Building2 className="h-5 w-5" /></span>
-                <span className="flex-1">
-                  <span className="block text-sm font-bold text-ink-900">You already follow 17 companies</span>
-                  <span className="mt-1 block text-xs leading-relaxed text-ink-600">Stripe, OpenAI, Databricks, NVIDIA, Salesforce, Airbnb, Figma, Ramp and more. Their live openings refresh every hour. Add another company below if you like.</span>
-                </span>
-                <span className="grid h-5 w-5 place-items-center rounded-full border border-brand-600 bg-brand-600 text-white"><Check className="h-3 w-3" /></span>
-              </div>
+              {sources.length > 0 && (
+                <div className="flex w-full items-start gap-4 rounded-2xl border border-brand-500 bg-brand-50/60 p-4 ring-4 ring-brand-500/10">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-brand-700 ring-1 ring-brand-200"><Building2 className="h-5 w-5" /></span>
+                  <span className="flex-1">
+                    <span className="block text-sm font-bold text-ink-900">You follow {sources.length} {sources.length === 1 ? 'company' : 'companies'}</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-ink-600">
+                      {names.join(', ')}{sources.length > names.length ? ' and more' : ''}.{' '}
+                      {lastSync ? `Openings last updated ${relativeTime(lastSync)}.` : 'Openings will load shortly.'} Add another company below if you like.
+                    </span>
+                  </span>
+                  <span className="grid h-5 w-5 place-items-center rounded-full border border-brand-600 bg-brand-600 text-white"><Check className="h-3 w-3" /></span>
+                </div>
+              )}
+              {!following.loading && sources.length === 0 && (
+                <p className="rounded-2xl border border-ink-200 bg-ink-50 p-4 text-sm text-ink-600">You're not following any companies yet. Add one below, or skip and add some later from Discover Jobs.</p>
+              )}
               <div className="mt-6 grid gap-4 sm:grid-cols-[180px_1fr]">
                 <Field label="Real employer board">
                   <select className="input" value={provider} onChange={(e) => setProvider(e.target.value as typeof provider)}>

@@ -8,14 +8,14 @@ import type { AppEvent, Application, ApplicationState } from '@/lib/types';
 import { Badge, Button, Card, EmptyState, ErrorBanner, PageHeader, Spinner, StatCard } from '@/components/ui';
 import { useOnMatchesUpdated } from '@/lib/rescore';
 
-type Row = Pick<Application, 'id' | 'state' | 'submitted_at' | 'employer_response' | 'required_action' | 'created_at'> & { job: { title: string; company: string } | null };
+type Row = Pick<Application, 'id' | 'state' | 'submitted_at' | 'submission_method' | 'evidence_level' | 'employer_response' | 'required_action' | 'created_at'> & { job: { title: string; company: string } | null };
 
 export default function Overview() {
   const { profile, prefs } = useAuth();
   const { navigate } = useNav();
   const { data, loading, error, reload } = useAsync(async () => {
     const [apps, matches, interviews, events, resumes, sources] = await Promise.all([
-      must(supabase.from('applications').select('id, state, submitted_at, employer_response, required_action, created_at, job:jobs(title, company)').order('updated_at', { ascending: false })),
+      must(supabase.from('applications').select('id, state, submitted_at, submission_method, evidence_level, employer_response, required_action, created_at, job:jobs(title, company)').order('updated_at', { ascending: false })),
       supabase.from('job_matches').select('id', { count: 'exact', head: true }).eq('eligible', true).eq('dismissed', false).gte('score', 60),
       supabase.from('interviews').select('id', { count: 'exact', head: true }).in('outcome', ['requested', 'scheduled']),
       must(supabase.from('application_events').select('*, application:applications(job:jobs(title, company))').order('created_at', { ascending: false }).limit(8)),
@@ -40,12 +40,14 @@ export default function Overview() {
   const submitted = count(SUBMITTED_STATES);
   const needsYou = data.apps.filter((a) => a.state === 'NEEDS_USER_ACTION' || a.state === 'READY_FOR_REVIEW' || a.state === 'UNKNOWN_SUBMISSION_RESULT');
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const submittedToday = data.apps.filter((a) => a.submitted_at && new Date(a.submitted_at) >= today).length;
+  const submittedToday = data.apps.filter((a) => a.submitted_at && new Date(a.submitted_at) >= today && a.submission_method === 'provider_api').length;
+  const employerAccepted = data.apps.filter((a) => ['provider_accepted', 'receipt_verified', 'employer_response_verified'].includes(a.evidence_level)).length;
+  const selfReported = data.apps.filter((a) => a.evidence_level === 'user_reported').length;
   const responses = data.apps.filter((a) => a.employer_response !== 'none').length;
   const funnel: { label: string; value: number }[] = [
     { label: 'In pipeline', value: data.apps.length },
     { label: 'Submitted', value: submitted },
-    { label: 'Confirmed', value: count(['CONFIRMED']) },
+    { label: 'Accepted by employer', value: employerAccepted },
     { label: 'Responses', value: responses },
     { label: 'Interviews', value: data.apps.filter((a) => a.employer_response === 'interview' || a.employer_response === 'offer').length },
   ];
@@ -64,7 +66,7 @@ export default function Overview() {
     <>
       <PageHeader
         title={firstName ? `Good to see you, ${firstName}` : 'Overview'}
-        subtitle={`Mode: ${prefs?.apply_mode === 'auto' ? 'Auto-apply' : prefs?.apply_mode === 'manual' ? 'Manual' : 'Assisted'}. ${submittedToday} of ${prefs?.daily_quota ?? 0} daily submissions used today.`}
+        subtitle={`Mode: ${prefs?.apply_mode === 'auto' ? 'Auto-apply' : prefs?.apply_mode === 'manual' ? 'Manual' : 'Assisted'}. ${submittedToday} of ${prefs?.daily_quota ?? 0} automated sends used today.`}
         actions={<Button onClick={() => navigate('recommended')} icon={<Sparkles className="h-4 w-4" />}>See recommendations</Button>}
       />
 
@@ -89,7 +91,7 @@ export default function Overview() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Strong matches" value={data.strongMatches} hint="Eligible, score 60+" icon={<Target className="h-4 w-4" />} />
         <StatCard label="Needs your input" value={needsYou.length} hint="Reviews and questions" icon={<AlertTriangle className="h-4 w-4" />} tone="amber" />
-        <StatCard label="Submitted" value={submitted} hint={`${count(['CONFIRMED'])} confirmed by receipt`} icon={<Briefcase className="h-4 w-4" />} tone="success" />
+        <StatCard label="Submitted" value={submitted} hint={`${employerAccepted} accepted by employer system, ${selfReported} reported by you`} icon={<Briefcase className="h-4 w-4" />} tone="success" />
         <StatCard label="Upcoming interviews" value={data.upcomingInterviews} hint="Requested or scheduled" icon={<CalendarClock className="h-4 w-4" />} tone="sky" />
       </div>
 

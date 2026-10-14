@@ -193,6 +193,36 @@ export function standardQuestions(): Question[] {
   ];
 }
 
+const PROFILE_FIELDS = new Set(["first_name", "last_name", "email", "phone", "resume", "resume_text", "cover_letter", "cover_letter_text"]);
+const SENDABLE_TYPES = new Set(["input_text", "textarea", "multi_value_single_select", "input_hidden"]);
+
+export function isProfileField(field: string): boolean {
+  return PROFILE_FIELDS.has(field);
+}
+
+export function formGaps(
+  form: Question[],
+  answers: PacketAnswer[],
+  have: { phone: boolean; coverLetter: boolean },
+): string[] {
+  const gaps: string[] = [];
+  for (const q of form) {
+    if (!q.required) continue;
+    if (q.field === "phone" && !have.phone) gaps.push(q.label);
+    if (q.field.startsWith("cover_letter") && !have.coverLetter) gaps.push(q.label);
+    if (PROFILE_FIELDS.has(q.field)) continue;
+    if (!SENDABLE_TYPES.has(q.type)) {
+      gaps.push(q.label);
+      continue;
+    }
+    const a = answers.find((x) => x.field === q.field);
+    const value = a?.answer.trim() ?? "";
+    if (!value) gaps.push(q.label);
+    else if (q.options?.length && !q.options.some((o) => o.label === value)) gaps.push(q.label);
+  }
+  return [...new Set(gaps)];
+}
+
 // deno-lint-ignore no-explicit-any
 export function greenhouseQuestions(payload: any): Question[] {
   const qs = Array.isArray(payload?.questions) ? payload.questions : [];

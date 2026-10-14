@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, ExternalLink, FileCheck2, Hand, RotateCcw, Send, ShieldCheck, XCircle } from 'lucide-react';
 import { supabase, callFunction, friendlyError } from '@/lib/supabase';
-import { METHOD_LABEL, RESPONSE_LABEL, STATE_META, formatDate, safeUrl } from '@/lib/format';
+import { EVIDENCE_META, METHOD_LABEL, RESPONSE_LABEL, STATE_META, formatDate, safeUrl } from '@/lib/format';
 import type { AppEvent, Application } from '@/lib/types';
 import { Badge, Button, Drawer, Field, Modal, ScoreRing, useToast } from '@/components/ui';
 import PacketEditor, { draftFrom, saveToLibrary, type PacketDraft } from '@/components/PacketEditor';
@@ -78,9 +78,9 @@ export default function ApplicationDrawer({ app, onClose, onChanged }: { app: Ap
       {editable && dirty && <Button variant="secondary" onClick={async () => { setBusy('save'); const s = await savePacket(); setBusy(null); if (s) onChanged(); }} loading={busy === 'save'}>Save changes</Button>}
       {canAttest && <Button variant="secondary" onClick={() => setAttestOpen(true)} icon={<Hand className="h-4 w-4" />}>{app.state === 'UNKNOWN_SUBMISSION_RESULT' ? 'It went through' : 'I submitted it myself'}</Button>}
       {app.state === 'READY_FOR_REVIEW' && app.mode !== 'manual' && (
-        <Button onClick={() => act('approve', {}, 'Approved. Submitting now.')} loading={busy === 'approve'} icon={<Send className="h-4 w-4" />}>Approve and submit</Button>
+        <Button onClick={() => act('approve', {}, 'Approved. It will be re-checked right before sending; if the employer form needs anything we can\'t fill, it comes back to you.')} loading={busy === 'approve'} icon={<Send className="h-4 w-4" />}>Approve to send</Button>
       )}
-      {app.state === 'SUBMITTED' && <Button variant="secondary" onClick={() => setReceiptOpen(true)} icon={<FileCheck2 className="h-4 w-4" />}>Add employer receipt</Button>}
+      {app.state === 'SUBMITTED' && <Button variant="secondary" onClick={() => setReceiptOpen(true)} icon={<FileCheck2 className="h-4 w-4" />}>Save employer confirmation</Button>}
       {(app.state === 'SUBMITTED' || app.state === 'CONFIRMED') && <Button onClick={() => setResponseOpen(true)}>Record response</Button>}
     </div>
   );
@@ -93,6 +93,7 @@ export default function ApplicationDrawer({ app, onClose, onChanged }: { app: Ap
           <Badge tone={meta.tone}>{meta.label}</Badge>
           <Badge tone="neutral">{app.mode} mode</Badge>
           {app.submission_method && <Badge tone={app.submission_method === 'manual_user_reported' ? 'amber' : 'brand'}>{METHOD_LABEL[app.submission_method]}</Badge>}
+          {(app.state === 'SUBMITTED' || app.state === 'CONFIRMED') && <Badge tone={EVIDENCE_META[app.evidence_level]?.tone ?? 'neutral'}>{EVIDENCE_META[app.evidence_level]?.label ?? 'No proof yet'}</Badge>}
           {app.employer_response !== 'none' && <Badge tone="sky">{RESPONSE_LABEL[app.employer_response]}</Badge>}
           {applyUrl && (
             <a href={applyUrl} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800">
@@ -138,17 +139,22 @@ export default function ApplicationDrawer({ app, onClose, onChanged }: { app: Ap
           <div className="space-y-4 text-sm">
             <dl className="grid grid-cols-2 gap-4 rounded-xl bg-ink-50 p-4">
               <div><dt className="label">Submitted</dt><dd className="text-ink-900">{formatDate(app.submitted_at, true)}</dd></div>
-              <div><dt className="label">Confirmed</dt><dd className="text-ink-900">{formatDate(app.confirmed_at, true)}</dd></div>
+              <div><dt className="label">Proof level</dt><dd className="text-ink-900">{EVIDENCE_META[app.evidence_level]?.label ?? 'No proof yet'}</dd></div>
+              <div><dt className="label">Receipt verified</dt><dd className="text-ink-900">{formatDate(app.confirmed_at, true)}</dd></div>
               <div><dt className="label">Method</dt><dd className="text-ink-900">{app.submission_method ? METHOD_LABEL[app.submission_method] : '—'}</dd></div>
               <div><dt className="label">Receipt / reference</dt><dd className="break-all font-mono text-xs text-ink-900">{app.receipt_id || '—'}</dd></div>
               <div><dt className="label">Attempts</dt><dd className="text-ink-900">{app.attempts}</dd></div>
               <div><dt className="label">Approved by you</dt><dd className="text-ink-900">{formatDate(app.user_approved_at, true)}</dd></div>
             </dl>
-            {app.state === 'CONFIRMED' ? (
-              <p className="flex items-center gap-2 font-semibold text-emerald-700"><ShieldCheck className="h-4 w-4" />Backed by a verified receipt.</p>
-            ) : app.state === 'SUBMITTED' && app.submission_method === 'manual_user_reported' ? (
-              <p className="flex items-center gap-2 text-amber-800"><Hand className="h-4 w-4" />You recorded this submission. Add the employer's confirmation to mark it confirmed.</p>
-            ) : null}
+            {app.evidence_level !== 'none' && EVIDENCE_META[app.evidence_level] && (
+              <p className={`flex items-start gap-2 ${app.evidence_level === 'user_reported' ? 'text-amber-800' : 'text-ink-700'}`}>
+                {app.evidence_level === 'user_reported' ? <Hand className="mt-0.5 h-4 w-4 shrink-0" /> : <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />}
+                {EVIDENCE_META[app.evidence_level].description}
+              </p>
+            )}
+            {Boolean(app.confirmation_evidence?.employer_receipt) && (
+              <p className="text-xs text-ink-500">You saved an employer confirmation below. Because it was pasted in, it is kept as your own record and does not count as a verified receipt.</p>
+            )}
             {app.confirmation_evidence && Object.keys(app.confirmation_evidence).length > 0 && (
               <div>
                 <p className="label">Evidence record</p>
@@ -163,7 +169,7 @@ export default function ApplicationDrawer({ app, onClose, onChanged }: { app: Ap
       <AttestModal open={attestOpen} onClose={() => setAttestOpen(false)} busy={busy === 'mark_manual_submitted'} unknown={app.state === 'UNKNOWN_SUBMISSION_RESULT'}
         onSubmit={(note, reference) => act('mark_manual_submitted', { attested: true, note, reference }, 'Recorded as submitted by you.')} />
       <ReceiptModal open={receiptOpen} onClose={() => setReceiptOpen(false)} busy={busy === 'add_receipt'}
-        onSubmit={(note, reference) => act('add_receipt', { note, reference }, 'Receipt saved. Application confirmed.')} />
+        onSubmit={(note, reference) => act('add_receipt', { note, reference }, 'Confirmation saved to this application.')} />
       <ResponseModal open={responseOpen} onClose={() => setResponseOpen(false)} busy={busy === 'record_response'} current={app.employer_response}
         onSubmit={(response, note) => act('record_response', { response, note }, 'Response recorded.')} />
     </>
@@ -197,8 +203,9 @@ function ReceiptModal({ open, onClose, onSubmit, busy }: { open: boolean; onClos
   useEffect(() => { if (open) { setNote(''); setRef(''); } }, [open]);
   return (
     <Modal open={open} onClose={onClose} title="Add the employer's confirmation"
-      footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={() => onSubmit(note, ref)} disabled={note.trim().length < 10} loading={busy} icon={<CheckCircle2 className="h-4 w-4" />}>Mark confirmed</Button></>}>
+      footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={() => onSubmit(note, ref)} disabled={note.trim().length < 10} loading={busy} icon={<CheckCircle2 className="h-4 w-4" />}>Save confirmation</Button></>}>
       <div className="space-y-4">
+        <p className="text-sm text-ink-600">This is kept with the application as your own record. Pasted text can't be checked with the employer, so it won't be shown as a verified receipt.</p>
         <Field label="Confirmation text" hint="Paste the confirmation email or on-screen message (at least 10 characters).">
           <textarea className="input min-h-[120px]" value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} />
         </Field>

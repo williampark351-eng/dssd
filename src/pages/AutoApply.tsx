@@ -17,6 +17,8 @@ const MODES: { key: ApplyMode; title: string; icon: typeof Hand; body: string; p
     points: ['Only at or above your minimum score', 'Never answers sensitive questions for you', 'Stops at your daily limit'] },
 ];
 
+const CONSENT_VERSION = 'auto-apply-v1';
+
 const CONSENT_ITEMS = [
   'Applications may be sent in my name to employers without asking me each time.',
   'Only information from my profile, reviewed resume and approved answers will be used. Nothing will be invented.',
@@ -25,7 +27,7 @@ const CONSENT_ITEMS = [
 ];
 
 export default function AutoApply() {
-  const { prefs, setPrefs } = useAuth();
+  const { prefs, setPrefs, refresh } = useAuth();
   const { navigate } = useNav();
   const toast = useToast();
   const [consentOpen, setConsentOpen] = useState(false);
@@ -40,7 +42,7 @@ export default function AutoApply() {
     return {
       queued: rows.filter((r) => r.state === 'QUEUED').length,
       review: rows.filter((r) => r.state === 'READY_FOR_REVIEW' || r.state === 'NEEDS_USER_ACTION').length,
-      today: rows.filter((r) => r.submitted_at && new Date(r.submitted_at) >= today && r.submission_method !== 'manual_user_reported').length,
+      today: rows.filter((r) => r.submitted_at && new Date(r.submitted_at) >= today && r.submission_method === 'provider_api').length,
     };
   });
 
@@ -51,24 +53,33 @@ export default function AutoApply() {
     const { data, error } = await supabase.from('candidate_preferences').update(fields).eq('user_id', prefs.user_id).select().maybeSingle();
     setSaving(false);
     if (error || !data) { toast('error', friendlyError(error, 'Could not save these settings.')); return false; }
-    setPrefs(data as Preferences);
-    if (message) toast('success', message);
+    const next = data as Preferences;
+    setPrefs(next);
+    if (prefs.apply_mode === 'auto' && next.apply_mode !== 'auto') {
+      toast('info', 'You loosened your auto-apply limits, so auto-apply was turned off. Turn it on again to agree to the new limits.');
+    } else if (message) toast('success', message);
     return true;
   };
 
   const chooseMode = async (mode: ApplyMode) => {
     if (mode === prefs.apply_mode) return;
     if (mode === 'auto') { setChecks(CONSENT_ITEMS.map(() => false)); setConsentOpen(true); return; }
-    const ok = await save({ apply_mode: mode, auto_apply_consent_at: null }, `Switched to ${mode} mode.`);
-    if (ok) audit(prefs.apply_mode === 'auto' ? 'auto_apply.consent_withdrawn' : 'apply_mode.changed', 'candidate_preferences', { mode });
+    setSaving(true);
+    const { error } = await supabase.rpc('set_apply_mode', { p_mode: mode });
+    if (!error) await refresh();
+    setSaving(false);
+    if (error) { toast('error', friendlyError(error, 'Could not change the mode.')); return; }
+    toast('success', `Switched to ${mode} mode.`);
   };
 
   const grantConsent = async () => {
-    const ok = await save({ apply_mode: 'auto', auto_apply_consent_at: new Date().toISOString() }, 'Auto-apply is on.');
-    if (ok) {
-      audit('auto_apply.consent_granted', 'candidate_preferences', { statements: CONSENT_ITEMS, min_score: prefs.auto_min_score, daily_quota: prefs.daily_quota });
-      setConsentOpen(false);
-    }
+    setSaving(true);
+    const { error } = await supabase.rpc('grant_auto_apply_consent', { p_policy_version: CONSENT_VERSION, p_statements: CONSENT_ITEMS });
+    if (!error) await refresh();
+    setSaving(false);
+    if (error) { toast('error', friendlyError(error, 'Could not turn on auto-apply.')); return; }
+    toast('success', 'Auto-apply is on.');
+    setConsentOpen(false);
   };
 
   const run = async () => {
@@ -118,7 +129,10 @@ export default function AutoApply() {
         })}
       </div>
       {prefs.apply_mode === 'auto' && prefs.auto_apply_consent_at && (
-        <p className="mt-3 text-xs text-ink-500">Consent given {formatDate(prefs.auto_apply_consent_at, true)}. Switching to another mode withdraws it.</p>
+        <p className="mt-3 text-xs text-ink-500">
+          You agreed on {formatDate(prefs.auto_apply_consent_at, true)} to auto-apply at score {prefs.auto_min_score}+ and up to {prefs.daily_quota} per day.
+          Switching modes, lowering the score or raising the daily limit turns auto-apply off until you agree again.
+        </p>
       )}
 
       <Card className="mt-8 divide-y divide-ink-100">
@@ -139,7 +153,7 @@ export default function AutoApply() {
         <SettingRow title="Write cover letters" body="Generated only from facts on your resume. You can edit each one before it is sent.">
           <Toggle checked={prefs.generate_cover_letters} onChange={(v) => save({ generate_cover_letters: v })} disabled={saving} />
         </SettingRow>
-        <SettingRow title="Pause all automation" body="Immediately stops preparation and submission across your queue.">
+        <SettingRow title="Pause all automation" body="Stops anything new from being prepared or sent. Applications an employer has already received stay sent; pausing does not withdraw them.">
           <Toggle checked={prefs.automation_paused} onChange={(v) => { save({ automation_paused: v }, v ? 'Automation paused.' : 'Automation resumed.'); audit(v ? 'automation_paused' : 'automation_resumed', 'candidate_preferences'); }} disabled={saving} />
         </SettingRow>
       </Card>
@@ -147,7 +161,9 @@ export default function AutoApply() {
       <Card className="mt-6 bg-ink-950 p-6 text-sm text-ink-200">
         <h3 className="mb-3 font-bold text-white">How submissions actually happen</h3>
         <ul className="space-y-2 leading-relaxed">
-          <li>Greenhouse and Lever roles can be submitted directly only where the employer has authorized an integration. Otherwise the packet waits for you: open the employer's form, click your Fill application bookmark, attach your resume and submit, then record it here.</li>
+          <li>Greenhouse roles can be sent directly only where the employer has authorized it. Right before sending we reload the employer's current form; if any required item can't be filled exactly, it comes back to you instead.</li>
+          <li>Lever, Workday, Ashby and other systems are never sent automatically, because we can't see every question they ask. The packet waits for you: open the employer's form, use your Fill button, attach your resume and submit, then record it here.</li>
+          <li>Every send is re-checked at the last moment against your current limits, pause setting, excluded companies and whether the listing is still open.</li>
           <li>We never get around CAPTCHAs or login checks. If a site asks for one, the application pauses and asks you to finish it.</li>
           <li>If we cannot confirm a submission went through, it is marked as unverified, never as submitted.</li>
         </ul>
@@ -166,7 +182,10 @@ export default function AutoApply() {
             </label>
           ))}
         </div>
-        <p className="mt-4 text-xs text-ink-500">Current limits: score {prefs.auto_min_score}+ and up to {prefs.daily_quota} per day.</p>
+        <p className="mt-4 text-xs text-ink-500">
+          You are agreeing to these limits: score {prefs.auto_min_score}+ and up to {prefs.daily_quota} per day (consent version {CONSENT_VERSION}).
+          If you later lower the score or raise the limit, auto-apply turns off until you agree again.
+        </p>
       </Modal>
     </>
   );
