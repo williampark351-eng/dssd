@@ -91,7 +91,7 @@ export default function Overview() {
               {submittedToday} of {prefs?.daily_quota ?? 0} automated sends used today. Everything below is real, receipt-backed progress.
             </p>
           </div>
-          <Button variant="dark" className="shrink-0 bg-white text-brand-900 hover:bg-brand-50" onClick={() => navigate('recommended')} icon={<Sparkles className="h-4 w-4" />}>
+          <Button variant="dark" className="shrink-0 bg-ink-950/60 text-white ring-1 ring-inset ring-white/25 hover:bg-ink-950/80" onClick={() => navigate('recommended')} icon={<Sparkles className="h-4 w-4" />}>
             See recommendations
           </Button>
         </div>

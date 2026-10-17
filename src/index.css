@@ -37,3 +37,7 @@
 
 .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
 .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-ink-300/70; }
+
+@layer utilities {
+  .font-display { @apply font-extrabold tracking-tight; }
+}
