@@ -1,11 +1,11 @@
-import { AlertTriangle, ArrowRight, Briefcase, CalendarClock, CheckCircle2, Compass, ListChecks, Sparkles, Target } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Briefcase, CalendarClock, CheckCircle2, ChevronRight, Compass, ListChecks, Sparkles, Target } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAsync, must } from '@/lib/useAsync';
 import { useAuth } from '@/context/AuthContext';
 import { useNav } from '@/context/NavContext';
 import { STATE_META, SUBMITTED_STATES, relativeTime } from '@/lib/format';
 import type { AppEvent, Application, ApplicationState } from '@/lib/types';
-import { Badge, Button, Card, EmptyState, ErrorBanner, PageHeader, Spinner, StatCard } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, ErrorBanner, StatCard } from '@/components/ui';
 import { useOnMatchesUpdated } from '@/lib/rescore';
 
 type Row = Pick<Application, 'id' | 'state' | 'submitted_at' | 'submission_method' | 'evidence_level' | 'employer_response' | 'required_action' | 'created_at'> & { job: { title: string; company: string } | null };
@@ -33,7 +33,22 @@ export default function Overview() {
   });
   useOnMatchesUpdated(reload);
 
-  if (loading) return <Spinner />;
+  if (loading) {
+    return (
+      <div className="animate-fade-up">
+        <div className="skeleton mb-8 h-36 rounded-2xl" />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Card key={i} className="p-5"><div className="skeleton h-3 w-20" /><div className="skeleton mt-4 h-9 w-16" /></Card>
+          ))}
+        </div>
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+          <Card className="p-6"><div className="skeleton h-3 w-32" /><div className="mt-6 space-y-4">{Array.from({ length: 4 }, (_, i) => <div key={i} className="skeleton h-10 w-full" />)}</div></Card>
+          <Card className="p-6"><div className="skeleton h-3 w-24" /><div className="mt-6 space-y-4">{Array.from({ length: 4 }, (_, i) => <div key={i} className="skeleton h-3 w-full" />)}</div></Card>
+        </div>
+      </div>
+    );
+  }
   if (error || !data) return <ErrorBanner message={error ?? 'Could not load your overview.'} onRetry={reload} />;
 
   const count = (states: ApplicationState[]) => data.apps.filter((a) => states.includes(a.state)).length;
@@ -61,30 +76,49 @@ export default function Overview() {
     { done: data.apps.length > 0, label: 'Queue your first application', go: () => navigate('recommended') },
   ];
   const setupLeft = setup.filter((s) => !s.done);
+  const setupDone = setup.length - setupLeft.length;
 
   return (
     <>
-      <PageHeader
-        title={firstName ? `Good to see you, ${firstName}` : 'Overview'}
-        subtitle={`Mode: ${prefs?.apply_mode === 'auto' ? 'Auto-apply' : prefs?.apply_mode === 'manual' ? 'Manual' : 'Assisted'}. ${submittedToday} of ${prefs?.daily_quota ?? 0} automated sends used today.`}
-        actions={<Button onClick={() => navigate('recommended')} icon={<Sparkles className="h-4 w-4" />}>See recommendations</Button>}
-      />
+      <div className="relative mb-8 overflow-hidden rounded-2xl bg-brand-950 px-6 py-8 text-white shadow-lg shadow-brand-950/20 sm:px-8">
+        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand-500/20 blur-3xl" />
+        <div className="absolute -bottom-32 -left-16 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-brand-300">Dashboard</p>
+            <h1 className="mt-1 font-display text-4xl">{firstName ? `Good to see you, ${firstName}` : 'Your pipeline at a glance'}</h1>
+            <p className="mt-2 text-sm text-brand-100/80">
+              {submittedToday} of {prefs?.daily_quota ?? 0} automated sends used today. Everything below is real, receipt-backed progress.
+            </p>
+          </div>
+          <Button variant="dark" className="shrink-0 bg-white text-brand-900 hover:bg-brand-50" onClick={() => navigate('recommended')} icon={<Sparkles className="h-4 w-4" />}>
+            See recommendations
+          </Button>
+        </div>
+      </div>
 
       {setupLeft.length > 0 && (
-        <Card className="mb-8 overflow-hidden">
-          <div className="flex flex-col gap-4 bg-gradient-to-r from-brand-950 to-brand-800 p-6 text-white sm:flex-row sm:items-center">
-            <div className="flex-1">
-              <h2 className="text-lg font-bold">Finish setting up your pipeline</h2>
-              <p className="mt-1 text-sm text-brand-100/80">{setup.length - setupLeft.length} of {setup.length} steps complete.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {setup.map((s) => (
-                <button key={s.label} onClick={s.go} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${s.done ? 'bg-white/10 text-brand-100 line-through decoration-brand-300/60' : 'bg-white text-brand-900 hover:bg-brand-50'}`}>
-                  {s.done && <CheckCircle2 className="h-3.5 w-3.5" />}{s.label}
-                </button>
-              ))}
-            </div>
+        <Card className="mb-8 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-ink-500">Finish setting up your pipeline</h2>
+            <span className="text-xs font-bold text-brand-700">{setupDone} of {setup.length} done</span>
           </div>
+          <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {setup.map((s, i) => (
+              <li key={s.label}>
+                <button onClick={s.go}
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ring-1 ring-inset transition-all duration-150 active:scale-[.98] ${
+                    s.done ? 'bg-emerald-50/60 text-ink-400 line-through decoration-ink-300 ring-emerald-200/60' : 'bg-white text-ink-900 ring-ink-200 hover:border-brand-300 hover:ring-brand-300'}`}>
+                  <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${
+                    s.done ? 'bg-emerald-500 text-white' : 'bg-brand-50 text-brand-700 ring-1 ring-brand-200'}`}>
+                    {s.done ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{s.label}</span>
+                  {!s.done && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-ink-300" />}
+                </button>
+              </li>
+            ))}
+          </ol>
         </Card>
       )}
 
@@ -98,7 +132,7 @@ export default function Overview() {
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <Card className="p-6">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-base font-bold text-ink-950">Needs your attention</h2>
+            <h2 className="text-base font-bold tracking-tight text-ink-950">Needs your attention</h2>
             <Button variant="ghost" size="sm" onClick={() => navigate('queue')}>Open queue <ArrowRight className="h-3.5 w-3.5" /></Button>
           </div>
           {needsYou.length === 0 ? (
@@ -107,12 +141,13 @@ export default function Overview() {
             <ul className="divide-y divide-ink-100">
               {needsYou.slice(0, 6).map((a) => (
                 <li key={a.id}>
-                  <button onClick={() => navigate('queue', a.id)} className="flex w-full items-center gap-4 py-3 text-left transition hover:bg-ink-50/60">
+                  <button onClick={() => navigate('queue', a.id)} className="group flex w-full items-center gap-4 rounded-lg py-3 pl-2 pr-3 text-left transition hover:bg-ink-50">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-ink-900">{a.job?.title ?? 'Role'}</p>
+                      <p className="truncate text-sm font-bold text-ink-900">{a.job?.title ?? 'Role'}</p>
                       <p className="truncate text-xs text-ink-500">{a.job?.company} · {a.required_action || STATE_META[a.state].description}</p>
                     </div>
                     <Badge tone={STATE_META[a.state].tone}>{STATE_META[a.state].label}</Badge>
+                    <ArrowRight className="h-3.5 w-3.5 shrink-0 text-ink-300 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-brand-600" />
                   </button>
                 </li>
               ))}
@@ -121,13 +156,14 @@ export default function Overview() {
         </Card>
 
         <Card className="p-6">
-          <h2 className="mb-5 text-base font-bold text-ink-950">Pipeline</h2>
+          <h2 className="mb-5 text-base font-bold tracking-tight text-ink-950">Pipeline</h2>
           <div className="space-y-4">
-            {funnel.map((f) => (
+            {funnel.map((f, i) => (
               <div key={f.label}>
-                <div className="mb-1.5 flex justify-between text-xs font-semibold"><span className="text-ink-600">{f.label}</span><span className="text-ink-900">{f.value}</span></div>
+                <div className="mb-1.5 flex justify-between text-xs font-semibold"><span className="text-ink-600">{f.label}</span><span className="font-bold text-ink-900">{f.value}</span></div>
                 <div className="h-2.5 overflow-hidden rounded-full bg-ink-100">
-                  <div className="h-full rounded-full bg-brand-500 transition-all duration-700" style={{ width: `${(f.value / max) * 100}%` }} />
+                  <div className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-600 transition-all duration-700 ease-out"
+                    style={{ width: `${Math.max(f.value > 0 ? 4 : 0, (f.value / max) * 100)}%`, opacity: 1 - i * 0.12 }} />
                 </div>
               </div>
             ))}
@@ -136,7 +172,7 @@ export default function Overview() {
       </div>
 
       <Card className="mt-6 p-6">
-        <h2 className="mb-5 text-base font-bold text-ink-950">Recent activity</h2>
+        <h2 className="mb-5 text-base font-bold tracking-tight text-ink-950">Recent activity</h2>
         {data.events.length === 0 ? (
           <EmptyState icon={<Compass className="h-5 w-5" />} title="No activity yet" body="Queue an application and every step will be logged here." />
         ) : (
@@ -144,7 +180,7 @@ export default function Overview() {
             {data.events.map((e) => (
               <li key={e.id} className="relative">
                 <span className="absolute -left-[29px] top-1 h-3 w-3 rounded-full border-2 border-white bg-brand-500 ring-1 ring-brand-200" />
-                <p className="text-sm text-ink-900"><span className="font-semibold">{e.application?.job?.title ?? 'Application'}</span> <span className="text-ink-500">at {e.application?.job?.company}</span></p>
+                <p className="text-sm text-ink-900"><span className="font-bold">{e.application?.job?.title ?? 'Application'}</span> <span className="text-ink-500">at {e.application?.job?.company}</span></p>
                 <p className="mt-0.5 text-xs text-ink-500">{e.message} · {relativeTime(e.created_at)}</p>
               </li>
             ))}

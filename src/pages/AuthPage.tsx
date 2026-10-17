@@ -40,11 +40,12 @@ export default function AuthPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
       <aside className="relative hidden overflow-hidden bg-brand-950 p-12 text-white lg:flex lg:flex-col">
-        <div className="absolute -right-32 -top-32 h-[28rem] w-[28rem] rounded-full bg-brand-600/30 blur-3xl" />
-        <div className="absolute -bottom-40 -left-20 h-[26rem] w-[26rem] rounded-full bg-sky-500/10 blur-3xl" />
+        <div className="absolute -right-32 -top-32 h-[28rem] w-[28rem] animate-float rounded-full bg-brand-500/25 blur-3xl" />
+        <div className="absolute -bottom-40 -left-20 h-[26rem] w-[26rem] animate-float rounded-full bg-sky-400/10 blur-3xl" style={{ animationDelay: '-2.5s' }} />
+        <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black/30 to-transparent" />
         <div className="relative flex items-center gap-2.5">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand-400 text-brand-950"><Route className="h-5 w-5" /></div>
-          <span className="text-lg font-bold tracking-tight">Applyline</span>
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand-400 text-brand-950 shadow-lg shadow-brand-500/30"><Route className="h-5 w-5" /></div>
+          <span className="text-lg font-extrabold tracking-tight">Applyline</span>
         </div>
         <div className="relative mt-auto max-w-lg">
           <h1 className="font-display text-6xl leading-[1.05]">Your job search, run like a well-kept pipeline.</h1>
@@ -58,7 +59,7 @@ export default function AuthPage() {
               { icon: ShieldCheck, text: 'Nothing is marked submitted without real proof' },
             ].map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3 text-brand-50/90">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/10"><Icon className="h-4 w-4 text-brand-300" /></span>
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/10 ring-1 ring-inset ring-white/10"><Icon className="h-4 w-4 text-brand-300" /></span>
                 {text}
               </li>
             ))}
@@ -66,11 +67,11 @@ export default function AuthPage() {
         </div>
       </aside>
 
-      <main className="flex items-center justify-center px-6 py-12">
+      <main className="surface-muted flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm animate-fade-up">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand-600 text-white"><Route className="h-5 w-5" /></div>
-            <span className="text-lg font-bold">Applyline</span>
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-md shadow-brand-900/20"><Route className="h-5 w-5" /></div>
+            <span className="text-lg font-extrabold tracking-tight text-ink-950">Applyline</span>
           </div>
           <h2 className="font-display text-4xl text-ink-950">{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h2>
           <p className="mt-2 text-sm text-ink-500">
@@ -90,7 +91,7 @@ export default function AuthPage() {
               <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
                 autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} />
             </Field>
-            {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
+            {error && <p className="animate-fade-up rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 ring-1 ring-inset ring-rose-200">{error}</p>}
             <Button type="submit" loading={loading} className="w-full py-2.5">
               {mode === 'signin' ? 'Sign in' : 'Create account'} <ArrowRight className="h-4 w-4" />
             </Button>
@@ -98,11 +99,11 @@ export default function AuthPage() {
 
           <p className="mt-6 text-center text-sm text-ink-500">
             {mode === 'signin' ? 'New to Applyline?' : 'Already have an account?'}{' '}
-            <button onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null); }} className="font-semibold text-brand-700 hover:text-brand-800">
+            <button onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null); }} className="font-bold text-brand-700 underline-offset-2 transition hover:text-brand-600 hover:underline">
               {mode === 'signin' ? 'Create an account' : 'Sign in'}
             </button>
           </p>
-          <div className="mt-10 flex items-start gap-2 rounded-xl bg-ink-100/70 p-3 text-xs text-ink-600">
+          <div className="mt-10 flex items-start gap-2 rounded-xl bg-white/80 p-3 text-xs leading-relaxed text-ink-600 ring-1 ring-ink-200/70">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
             University invite? Sign up with the same email your career center used, then accept the invite under Settings.
           </div>

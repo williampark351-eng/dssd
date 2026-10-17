@@ -3,20 +3,37 @@
 @tailwind utilities;
 
 @layer base {
-  html { -webkit-font-smoothing: antialiased; }
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; scroll-behavior: smooth; }
   body { @apply bg-ink-50 text-ink-900 font-sans leading-normal; }
-  h1, h2, h3, h4 { @apply leading-tight; }
+  h1, h2, h3, h4 { @apply leading-tight tracking-tight; }
   ::selection { @apply bg-brand-200 text-brand-950; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply rounded-full bg-ink-200 border-2 border-solid border-transparent bg-clip-content; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-ink-300 bg-clip-content; }
 }
 
 @layer components {
   .input {
-    @apply w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400
-      transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15 disabled:bg-ink-50 disabled:text-ink-500;
+    @apply w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm
+      placeholder:text-ink-400 transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15
+      disabled:bg-ink-50 disabled:text-ink-500;
   }
-  .label { @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-500; }
-  .card { @apply rounded-2xl border border-ink-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,20,0.04)]; }
+  .label { @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-500; }
+  .card {
+    @apply rounded-2xl border border-ink-200/70 bg-white shadow-[0_1px_2px_rgba(16,24,20,.04),0_1px_3px_rgba(16,24,20,.03)];
+  }
+  .card-hover {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:border-ink-300/70
+      hover:shadow-[0_8px_24px_-6px_rgba(16,24,20,.12),0_2px_6px_rgba(16,24,20,.05)];
+  }
+  .surface-muted { @apply bg-gradient-to-b from-white to-ink-50/80; }
+  .skeleton {
+    @apply animate-shimmer rounded-lg;
+    background: linear-gradient(90deg, theme('colors.ink.100') 25%, theme('colors.ink.50') 45%, theme('colors.ink.100') 65%);
+    background-size: 200% 100%;
+  }
 }
 
-.scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
-.scrollbar-thin::-webkit-scrollbar-thumb { background: #d2d7d4; border-radius: 8px; }
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-ink-300/70; }
