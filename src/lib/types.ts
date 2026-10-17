@@ -34,6 +34,9 @@ export type Resume = {
   id: string; name: string; target_category: string; file_path: string | null; file_name: string | null; file_type: string | null;
   raw_text: string; parsed: Partial<ParsedResume>; parse_status: 'pending' | 'parsed' | 'failed' | 'manual'; parse_error: string | null;
   reviewed: boolean; is_primary: boolean; created_at: string; updated_at: string;
+  file_hash?: string | null; dup_of_resume_id?: string | null;
+  quality?: { score: number; grade: string; checks: { id: string; label: string; passed: boolean; detail: string }[] } | null;
+  quality_at?: string | null; source_kind?: string;
 };
 
 export type LibraryAnswer = { id: string; question: string; answer: string; category: string; sensitive: boolean; approved: boolean; updated_at: string };
