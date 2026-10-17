@@ -109,7 +109,7 @@ export default function ResumeStudio() {
           <Button variant="secondary" icon={<ClipboardPaste className="h-4 w-4" />} onClick={() => setPasteOpen(true)}>Paste text</Button>
           <Button icon={<Upload className="h-4 w-4" />} loading={uploading} onClick={() => fileRef.current?.click()}>Upload resumes</Button>
         </>} />
-      <input ref={fileRef} type="file" multiple accept=".pdf,.docx,.txt,.rtf,.zip" className="hidden" onChange={(e) => { onFiles(e.target.files); if (fileRef.current) fileRef.current.value = ''; }} />
+      <input ref={fileRef} type="file" multiple accept=".pdf,.docx,.txt,.rtf,.zip" className="hidden" onChange={(e) => { const files = e.target.files; if (files) onFiles(files); if (fileRef.current) fileRef.current.value = ''; }} />
 
       <div className="mb-6 inline-flex rounded-xl bg-ink-100 p-1">
         {[['resumes', 'Resume versions'], ['answers', 'Answer library']].map(([k, l]) => (
@@ -150,7 +150,7 @@ export default function ResumeStudio() {
                     {it.status === 'done' && <Badge tone="success"><CheckCircle2 className="h-3 w-3" />Added{typeof it.score === 'number' ? ` · ${it.score}/100` : ''}</Badge>}
                     {it.status === 'duplicate' && <Badge tone="amber"><Copy className="h-3 w-3" />Duplicate</Badge>}
                     {it.status === 'skipped' && <Badge tone="neutral">Skipped</Badge>}
-                    {it.status === 'failed' && <Badge tone="danger"><AlertTriangle className="h-3 w-3" />Failed</Badge>}
+                    {it.status === 'failed' && <Badge tone="rose"><AlertTriangle className="h-3 w-3" />Failed</Badge>}
                     {(it.status === 'uploading' || it.status === 'parsing' || it.status === 'queued') && <Badge tone="brand"><RefreshCw className="h-3 w-3 animate-spin" />{it.status === 'parsing' ? 'Reading' : 'Uploading'}</Badge>}
                   </li>
                 ))}

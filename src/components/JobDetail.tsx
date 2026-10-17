@@ -4,6 +4,7 @@ import { PROVIDER_LABEL, formatDate, formatSalary, safeUrl } from '@/lib/format'
 import { Badge, Drawer, ScoreRing } from '@/components/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 import { fetchJobDescription } from '@/lib/jobs';
+import KeywordGap from '@/components/KeywordGap';
 
 function Description({ job }: { job: Job }) {
   const [loaded, setLoaded] = useState<{ id: string; text: string } | null>(null);
@@ -110,6 +111,7 @@ export function JobDetailDrawer({ job, match, onClose, footer }: { job: Job | nu
               <MatchBreakdown match={match} />
             </section>
           )}
+          <KeywordGap jobId={job.id} />
           <section>
             <div className="mb-2 flex items-center justify-between">
               <p className="label mb-0">Job description</p>

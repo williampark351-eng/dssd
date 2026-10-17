@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, CircleHelp, Search, XCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { fetchJobDescription } from '@/lib/jobs';
 import type { Resume } from '@/lib/types';
 
@@ -14,9 +15,21 @@ function norm(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9+#]/g, '');
 }
 
-export default function KeywordGap({ jobId, resume }: { jobId: string; resume: Resume | null }) {
+export default function KeywordGap({ jobId }: { jobId: string }) {
+  const [resume, setResume] = useState<Resume | null>(null);
   const [state, setState] = useState<{ id: string; matched: string[]; missing: string[] } | null>(null);
   const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      try {
+        const { data } = await supabase.from('resumes').select('*').eq('is_primary', true).maybeSingle();
+        if (live) setResume((data as Resume) ?? null);
+      } catch { if (live) setFailed(true); }
+    })();
+    return () => { live = false; };
+  }, []);
 
   useEffect(() => {
     let live = true;
@@ -43,8 +56,7 @@ export default function KeywordGap({ jobId, resume }: { jobId: string; resume: R
     return () => { live = false; };
   }, [jobId, resume?.id, resume?.parsed?.skills]);
 
-  if (!resume) return null;
-  if (failed) return null;
+  if (failed || !resume) return null;
   if (!state || state.id !== jobId) {
     return (
       <div className="flex items-center gap-2 rounded-xl bg-ink-50 px-3 py-2 text-xs text-ink-500">
