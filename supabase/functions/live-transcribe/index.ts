@@ -55,7 +55,9 @@ Deno.serve((req: Request) => {
     if (timer) clearTimeout(timer);
     if (reason) send({ type: "relay.error", message: reason });
     try { upstream?.close(); } catch { /* already closed */ }
-    try { client.close(); } catch { /* already closed */ }
+    // Give the error message a moment to flush before closing, and close with an
+    // explicit code so browsers treat it as a normal close instead of an error.
+    setTimeout(() => { try { client.close(1000, reason ? "error" : "done"); } catch { /* already closed */ } }, reason ? 150 : 0);
   };
 
   const authTimer = setTimeout(() => { if (!authed) shutdown("Sign-in timed out."); }, 10000);
@@ -80,8 +82,9 @@ Deno.serve((req: Request) => {
         type: "session.update",
         session: {
           output_modalities: ["text"],
-          audio: { input: { turn_detection: { type: "server_vad", threshold: 0.5, silence_duration_ms: 1200 } } },
-          ...(translateTo ? { translation: { language: translateTo } } : {}),
+          // This model is translation-first: the translation block is required,
+          // and the target-language field is `language` (default en).
+          translation: { language: translateTo || "en" },
         },
       }));
       authed = true;
@@ -93,8 +96,9 @@ Deno.serve((req: Request) => {
       try {
         const ev = JSON.parse(String(data));
         if (ev?.type === "error") {
-          console.error("upstream error", ev.error);
-          send({ type: "relay.warning", message: "The speech service had trouble with that. Keep going or restart the session." });
+          console.error("upstream error", JSON.stringify(ev).slice(0, 500));
+          const detail = typeof ev?.error?.message === "string" ? ev.error.message : "";
+          shutdown(detail ? `The speech service rejected the session: ${detail}` : "The speech service had trouble starting. Please try again.");
         } else if (FORWARD.has(ev?.type)) {
           send(pick(ev));
           if (ev.type === "session.finished") shutdown();
