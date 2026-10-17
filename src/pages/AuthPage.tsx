@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { ArrowRight, CheckCircle2, Route, ShieldCheck, Sparkles, Target } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Eye, EyeOff, Route, ShieldCheck, Sparkles, Target } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button, Field } from '@/components/ui';
 
@@ -8,6 +8,7 @@ export default function AuthPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,8 +89,14 @@ export default function AuthPage() {
               <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
             </Field>
             <Field label="Password" hint={mode === 'signup' ? 'At least 8 characters' : undefined}>
-              <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} />
+              <div className="relative">
+                <input className="input pr-10" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required
+                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} />
+                <button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword((s) => !s)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400 transition hover:text-ink-700">
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </Field>
             {error && <p className="animate-fade-up rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 ring-1 ring-inset ring-rose-200">{error}</p>}
             <Button type="submit" loading={loading} className="w-full py-2.5">
