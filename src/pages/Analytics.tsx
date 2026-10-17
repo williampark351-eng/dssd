@@ -6,10 +6,11 @@ import { METHOD_LABEL, STATE_META } from '@/lib/format';
 import type { Application, ApplicationState } from '@/lib/types';
 import { Card, EmptyState, ErrorBanner, PageHeader, Spinner, StatCard } from '@/components/ui';
 
-type Row = Pick<Application, 'id' | 'state' | 'match_score' | 'submission_method' | 'submitted_at' | 'employer_response' | 'created_at'> & { job: { department: string; provider: string; work_arrangement: string } | null };
+type Row = Pick<Application, 'id' | 'state' | 'match_score' | 'submission_method' | 'submitted_at' | 'employer_response' | 'evidence_level' | 'created_at'> & { job: { department: string; provider: string; work_arrangement: string } | null };
 
 const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
 const responded = (r: Row) => !['none', 'withdrawn'].includes(r.employer_response);
+const EMPLOYER_VERIFIED = ['provider_accepted', 'receipt_verified', 'employer_response_verified'];
 
 function Bars({ rows }: { rows: { label: string; value: number; sub?: string }[] }) {
   const max = Math.max(1, ...rows.map((r) => r.value));
@@ -29,7 +30,7 @@ function Bars({ rows }: { rows: { label: string; value: number; sub?: string }[]
 export default function Analytics() {
   const { data, loading, error, reload } = useAsync(async () => {
     const [apps, interviews] = await Promise.all([
-      must(supabase.from('applications').select('id, state, match_score, submission_method, submitted_at, employer_response, created_at, job:jobs(department, provider, work_arrangement)').limit(5000)),
+      must(supabase.from('applications').select('id, state, match_score, submission_method, submitted_at, employer_response, evidence_level, created_at, job:jobs(department, provider, work_arrangement)').limit(5000)),
       must(supabase.from('interviews').select('id, outcome')),
     ]);
     return { apps: apps as unknown as Row[], interviews: interviews as { id: string; outcome: string }[] };
@@ -40,6 +41,7 @@ export default function Analytics() {
     const apps = data.apps;
     const sent = apps.filter((a) => a.state === 'SUBMITTED' || a.state === 'CONFIRMED');
     const resp = sent.filter(responded);
+    const employerVerified = apps.filter((a) => EMPLOYER_VERIFIED.includes(a.evidence_level)).length;
     const byState = Object.entries(apps.reduce<Record<string, number>>((m, a) => ({ ...m, [a.state]: (m[a.state] ?? 0) + 1 }), {}))
       .sort((a, b) => b[1] - a[1]).map(([s, v]) => ({ label: STATE_META[s as ApplicationState]?.label ?? s, value: v }));
     const group = (key: (r: Row) => string) => {
@@ -56,7 +58,7 @@ export default function Analytics() {
     }
     const avg = (rs: Row[]) => (rs.length ? Math.round(rs.reduce((s, r) => s + r.match_score, 0) / rs.length) : 0);
     return {
-      total: apps.length, sent: sent.length, confirmed: apps.filter((a) => a.state === 'CONFIRMED').length, resp: resp.length,
+      total: apps.length, sent: sent.length, employerVerified, resp: resp.length,
       interviews: data.interviews.length, offers: sent.filter((a) => a.employer_response === 'offer').length,
       byState, byDept: group((r) => r.job?.department ?? ''), byMethod: group((r) => METHOD_LABEL[r.submission_method ?? ''] ?? 'Unknown'),
       byArrangement: group((r) => r.job?.work_arrangement ?? ''), weeks, avgSent: avg(sent), avgResp: avg(resp),
@@ -74,7 +76,7 @@ export default function Analytics() {
       ) : (
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Applications sent" value={stats.sent} hint={`${stats.confirmed} with verified receipt`} icon={<Send className="h-4 w-4" />} />
+            <StatCard label="Applications sent" value={stats.sent} hint={`${stats.employerVerified} verified by the employer's system`} icon={<Send className="h-4 w-4" />} />
             <StatCard label="Response rate" value={`${pct(stats.resp, stats.sent)}%`} hint={`${stats.resp} employer responses`} icon={<MessageSquareReply className="h-4 w-4" />} tone="sky" />
             <StatCard label="Interviews" value={stats.interviews} hint={`${stats.offers} offer${stats.offers === 1 ? '' : 's'}`} icon={<CalendarCheck2 className="h-4 w-4" />} tone="success" />
             <StatCard label="Avg match score" value={stats.avgSent} hint={stats.resp ? `${stats.avgResp} for roles that responded` : 'of applications sent'} icon={<Target className="h-4 w-4" />} tone="amber" />

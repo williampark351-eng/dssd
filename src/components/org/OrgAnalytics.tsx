@@ -31,7 +31,7 @@ export default function OrgAnalytics({ orgId, orgName }: { orgId: string; orgNam
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Students" value={data.students} hint={`${data.active_students} actively applying`} icon={<Users className="h-4 w-4" />} />
-        <StatCard label="Applications sent" value={data.submitted} hint={`${data.confirmed} with verified receipt`} icon={<Send className="h-4 w-4" />} tone="sky" />
+        <StatCard label="Applications sent" value={data.submitted} hint={`${data.confirmed} receipts verified with the employer system`} icon={<Send className="h-4 w-4" />} tone="sky" />
         <StatCard label="Employer responses" value={data.responses} hint={`${pct(data.responses, data.submitted)} response rate`} icon={<MessageSquareReply className="h-4 w-4" />} tone="amber" />
         <StatCard label="Interviews / offers" value={`${data.interviews} / ${data.offers}`} hint="Reported by students" icon={<GraduationCap className="h-4 w-4" />} tone="success" />
       </div>

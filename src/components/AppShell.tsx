@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from 'react';
 import {
   BarChart3, Bot, Briefcase, Building2, CalendarClock, Compass, FileText, LayoutDashboard, ListChecks, LogOut, Menu, Mic,
-  Pause, Play, Route, Send, Settings, ShieldCheck, Sparkles, X,
+  Pause, Play, Route, Search, Send, Settings, ShieldCheck, Sparkles, X,
 } from 'lucide-react';
 import { supabase, audit, friendlyError } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useNav, type RouteKey } from '@/context/NavContext';
 import NotificationsMenu from '@/components/NotificationsMenu';
+import CommandPalette from '@/components/CommandPalette';
 import { useToast } from '@/components/ui';
 import { useAutoRescore } from '@/lib/rescore';
 
@@ -36,6 +37,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { route, navigate } = useNav();
   const toast = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [toggling, setToggling] = useState(false);
   useAutoRescore(profile?.id);
 
@@ -131,6 +133,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       <header className={`sticky top-0 z-20 flex h-16 items-center gap-3 border-b px-4 backdrop-blur-md transition-colors duration-300 sm:px-8 ${paused ? 'border-amber-200/80 bg-amber-50/90' : 'border-ink-200/60 bg-ink-50/85'}`}>
         <button onClick={() => setMobileOpen(true)} className="rounded-lg p-2 text-ink-600 transition hover:bg-ink-100 lg:hidden" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
+        <button onClick={() => setPaletteOpen(true)}
+          className="group inline-flex items-center gap-2 rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm font-medium text-ink-400 shadow-sm transition hover:border-ink-300 hover:text-ink-600">
+          <Search className="h-4 w-4" />
+          <span className="hidden sm:inline">Search or jump to…</span>
+          <kbd className="hidden rounded-md bg-ink-100 px-1.5 py-0.5 text-[10px] font-bold text-ink-500 sm:inline">⌘K</kbd>
+        </button>
         {paused && (
           <span className="hidden items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-amber-800 sm:inline-flex">
             <Pause className="h-3.5 w-3.5" /> Automation paused
@@ -147,6 +155,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
         )}
         <NotificationsMenu />
       </header>
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-10">
         <div key={route} className="animate-fade-up">{children}</div>
