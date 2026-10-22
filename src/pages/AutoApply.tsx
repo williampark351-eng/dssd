@@ -3,10 +3,11 @@ import { Bot, Hand, Play, ShieldAlert, ShieldCheck, Sparkles, Zap } from 'lucide
 import { supabase, callFunction, friendlyError, audit } from '@/lib/supabase';
 import { useAsync, must } from '@/lib/useAsync';
 import { useAuth } from '@/context/AuthContext';
-import { useNav } from '@/context/NavContext';
 import { formatDate } from '@/lib/format';
 import type { ApplyMode, Preferences } from '@/lib/types';
 import { Button, Card, Modal, PageHeader, StatCard, Toggle, useToast } from '@/components/ui';
+import ApplicationsPanel from '@/components/ApplicationsPanel';
+import FillButtonCard from '@/components/FillButtonCard';
 
 const MODES: { key: ApplyMode; title: string; icon: typeof Hand; body: string; points: string[] }[] = [
   { key: 'manual', title: 'Manual', icon: Hand, body: 'We prepare packets. You submit on the employer site yourself.',
@@ -28,12 +29,12 @@ const CONSENT_ITEMS = [
 
 export default function AutoApply() {
   const { prefs, setPrefs, refresh } = useAuth();
-  const { navigate } = useNav();
   const toast = useToast();
   const [consentOpen, setConsentOpen] = useState(false);
   const [checks, setChecks] = useState<boolean[]>(CONSENT_ITEMS.map(() => false));
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const stats = useAsync(async () => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -88,6 +89,7 @@ export default function AutoApply() {
       const res = await callFunction<{ processed: number; paused: boolean }>('application-worker', {});
       toast(res.paused ? 'info' : 'success', res.paused ? 'Automation is paused, so nothing was processed.' : `Processed ${res.processed} application${res.processed === 1 ? '' : 's'}.`);
       stats.reload();
+      setRefreshKey((k) => k + 1);
     } catch (err) {
       toast('error', friendlyError(err, 'The queue could not be processed.'));
     }
@@ -109,10 +111,15 @@ export default function AutoApply() {
 
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <StatCard label="Waiting in queue" value={stats.data?.queued ?? '—'} icon={<Bot className="h-4 w-4" />} tone="sky" />
-        <StatCard label="Waiting on you" value={stats.data?.review ?? '—'} icon={<Hand className="h-4 w-4" />} tone="amber" hint="Open the queue to review" />
+        <StatCard label="Waiting on you" value={stats.data?.review ?? '—'} icon={<Hand className="h-4 w-4" />} tone="amber" hint="Review them below" />
         <StatCard label="Sent today" value={`${stats.data?.today ?? '—'} / ${prefs.daily_quota}`} icon={<Zap className="h-4 w-4" />} hint="Daily limit applies to automated sends" />
       </div>
 
+      <ApplicationsPanel refreshKey={refreshKey} onChanged={stats.reload} />
+
+      <div className="mt-10"><FillButtonCard /></div>
+
+      <h2 className="mb-4 mt-10 text-sm font-bold uppercase tracking-widest text-ink-400">How much happens without you</h2>
       <div className="grid gap-4 lg:grid-cols-3">
         {MODES.map(({ key, title, icon: Icon, body, points }) => {
           const active = prefs.apply_mode === key;
@@ -162,12 +169,11 @@ export default function AutoApply() {
         <h3 className="mb-3 font-bold text-white">How submissions actually happen</h3>
         <ul className="space-y-2 leading-relaxed">
           <li>Greenhouse roles can be sent directly only where the employer has authorized it. Right before sending we reload the employer's current form; if any required item can't be filled exactly, it comes back to you instead.</li>
-          <li>Lever, Workday, Ashby and other systems are never sent automatically, because we can't see every question they ask. The packet waits for you: open the employer's form, use your Fill button, attach your resume and submit, then record it here.</li>
+          <li>Lever, Workday, Ashby and other systems are never sent automatically, because we can't see every question they ask. The packet waits for you: open the employer's form, click your Fill application bookmark, attach your resume and submit, then record it here.</li>
           <li>Every send is re-checked at the last moment against your current limits, pause setting, excluded companies and whether the listing is still open.</li>
           <li>We never get around CAPTCHAs or login checks. If a site asks for one, the application pauses and asks you to finish it.</li>
           <li>If we cannot confirm a submission went through, it is marked as unverified, never as submitted.</li>
         </ul>
-        <button onClick={() => navigate('queue')} className="mt-4 text-sm font-semibold text-brand-300 hover:text-brand-200">Open the application queue →</button>
       </Card>
 
       <Modal open={consentOpen} onClose={() => setConsentOpen(false)} title="Turn on auto-apply"

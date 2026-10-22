@@ -1,14 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
-export type RouteKey =
-  | 'overview' | 'discover' | 'recommended' | 'auto-apply' | 'queue' | 'applications' | 'resumes'
-  | 'outreach' | 'interviews' | 'practice' | 'analytics' | 'settings' | 'organization' | 'platform';
+export type RouteKey = 'discover' | 'auto-apply';
 
-const ROUTES: RouteKey[] = ['overview', 'discover', 'recommended', 'auto-apply', 'queue', 'applications', 'resumes', 'outreach', 'interviews', 'practice', 'analytics', 'settings', 'organization', 'platform'];
+const ROUTES: RouteKey[] = ['discover', 'auto-apply'];
+const LEGACY: Record<string, RouteKey> = { queue: 'auto-apply', applications: 'auto-apply' };
 
 function readHash(): { route: RouteKey; param: string | null } {
   const [r, param] = window.location.hash.replace(/^#\/?/, '').split('/');
-  return { route: ROUTES.includes(r as RouteKey) ? (r as RouteKey) : 'overview', param: param || null };
+  const route = ROUTES.includes(r as RouteKey) ? (r as RouteKey) : LEGACY[r];
+  return route ? { route, param: param || null } : { route: 'discover', param: null };
 }
 
 type NavValue = { route: RouteKey; param: string | null; navigate: (r: RouteKey, param?: string | null) => void };

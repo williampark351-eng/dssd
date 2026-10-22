@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCheck, Compass, ListPlus, Radio, Search, SlidersHorizontal } from 'lucide-react';
+import { CheckCheck, Compass, ExternalLink, ListPlus, Radio, Search, SlidersHorizontal } from 'lucide-react';
 import { supabase, friendlyError } from '@/lib/supabase';
 import { useAsync, must } from '@/lib/useAsync';
 import { fetchJobsForSources, queueJobs } from '@/lib/jobs';
 import { useAuth } from '@/context/AuthContext';
 import { useNav } from '@/context/NavContext';
-import { relativeTime } from '@/lib/format';
+import { relativeTime, safeUrl } from '@/lib/format';
 import type { Job, JobSource, Match } from '@/lib/types';
 import { Badge, Button, Card, EmptyState, ErrorBanner, PageHeader, ScoreRing, Spinner, useToast } from '@/components/ui';
 import SourcesPanel from '@/components/SourcesPanel';
 import WatchPanel from '@/components/discover/WatchPanel';
+import FillButtonCard from '@/components/FillButtonCard';
 import { JobDetailDrawer, JobMeta } from '@/components/JobDetail';
 import { arrivals, isNewJob, notifyAboutJobs, watchRegex } from '@/lib/watch';
 
@@ -119,6 +120,7 @@ export default function Discover() {
         <div className="space-y-6">
           {data && <SourcesPanel sources={data.sources} onChanged={reload} />}
           {data && <WatchPanel onlyMatches={onlyMatches} setOnlyMatches={setOnlyMatches} matchCount={watchCount} />}
+          <FillButtonCard compact />
         </div>
 
         <div>
@@ -221,9 +223,15 @@ export default function Discover() {
 
       <JobDetailDrawer job={open} match={open ? data?.matches.get(open.id) : null} onClose={() => setOpen(null)}
         footer={open && (
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {open.status === 'active' && safeUrl(open.apply_url || open.url) && (
+              <a href={safeUrl(open.apply_url || open.url)} target="_blank" rel="noopener noreferrer" title="Opens the employer's form. Click your Fill application bookmark there to fill it in."
+                className="inline-flex items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 py-2 text-sm font-semibold text-ink-800 transition hover:border-ink-300 hover:bg-ink-50">
+                <ExternalLink className="h-4 w-4" />Apply on employer site
+              </a>
+            )}
             {data?.applied.get(open.id) ? (
-              <Button variant="secondary" onClick={() => navigate('applications', open.id)}>View application</Button>
+              <Button variant="secondary" onClick={() => navigate('auto-apply', open.id)}>View application</Button>
             ) : (
               <Button onClick={() => queue([open.id])} loading={queuing} disabled={open.status !== 'active'} icon={<ListPlus className="h-4 w-4" />}>Add to queue</Button>
             )}

@@ -5,29 +5,13 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { NavProvider, useNav, type RouteKey } from '@/context/NavContext';
 import { Button, ToastProvider } from '@/components/ui';
 import AppShell from '@/components/AppShell';
-import AssistantDock from '@/components/assistant/AssistantDock';
-import AssistantPanel from '@/components/assistant/AssistantPanel';
 import AuthPage from '@/pages/AuthPage';
 import Onboarding from '@/pages/Onboarding';
-import Overview from '@/pages/Overview';
 import Discover from '@/pages/Discover';
-import Recommended from '@/pages/Recommended';
 import AutoApply from '@/pages/AutoApply';
-import Queue from '@/pages/Queue';
-import Applications from '@/pages/Applications';
-import ResumeStudio from '@/pages/ResumeStudio';
-import Outreach from '@/pages/Outreach';
-import Interviews from '@/pages/Interviews';
-import MockInterview from '@/pages/MockInterview';
-import Analytics from '@/pages/Analytics';
-import Settings from '@/pages/Settings';
-import Organization from '@/pages/Organization';
-import Platform from '@/pages/Platform';
 
 const PAGES: Record<RouteKey, ComponentType> = {
-  overview: Overview, discover: Discover, recommended: Recommended, 'auto-apply': AutoApply, queue: Queue,
-  applications: Applications, resumes: ResumeStudio, outreach: Outreach, interviews: Interviews, practice: MockInterview, analytics: Analytics,
-  settings: Settings, organization: Organization, platform: Platform,
+  discover: Discover, 'auto-apply': AutoApply,
 };
 
 function Splash() {
@@ -59,12 +43,8 @@ function Root() {
     );
   }
   if (!profile.onboarding_complete) return <Onboarding />;
-  if (new URLSearchParams(window.location.search).has('assistant')) {
-    document.title = 'Applyline HR assistant';
-    return <div className="h-screen"><AssistantPanel /></div>;
-  }
   const Page = PAGES[route];
-  return <><AppShell><Page /></AppShell><AssistantDock /></>;
+  return <AppShell><Page /></AppShell>;
 }
 
 export default function App() {
